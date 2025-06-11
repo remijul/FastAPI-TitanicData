@@ -78,6 +78,15 @@ atelier3/
 
 ### 1. Exceptions simples : `exceptions/custom_exceptions.py`
 
+#### Objectif : Définir des erreurs métier spécifiques et parlantes
+
+#### Pourquoi nécessaire :
+
+- Clarté : PassengerNotFound est plus parlant que Exception
+- Gestion ciblée : Traiter différemment chaque type d'erreur
+- Maintenance : Centralise les messages d'erreur
+- Debugging : Plus facile d'identifier la source du problème
+
 ```python
 class PassengerNotFound(Exception):
     """Passager non trouvé"""
@@ -100,6 +109,13 @@ class DatabaseError(Exception):
 
 ### 2. Fichier `exceptions/__init__.py`
 
+#### Objectif : Exposer les exceptions personnalisées
+
+#### Pourquoi nécessaire :
+
+- Import clean : `from exceptions import PassengerNotFound`
+- Évite d'exposer les détails d'implémentation
+
 ```python
 from .custom_exceptions import PassengerNotFound, ValidationError, DatabaseError
 
@@ -107,6 +123,15 @@ __all__ = ["PassengerNotFound", "ValidationError", "DatabaseError"]
 ```
 
 ### 3. Réponses standardisées : `schemas/response.py`
+
+#### Objectif : Standardiser et valider le format de toutes les réponses API
+
+#### Pourquoi nécessaire :
+
+- Cohérence : Toutes les réponses ont la même structure
+- Maintenance : Un seul endroit pour modifier le format des réponses
+- Documentation : Les clients savent à quoi s'attendre
+- Debugging : Plus facile de tracer les erreurs
 
 ```python
 from pydantic import BaseModel
@@ -145,6 +170,13 @@ def error_response(message: str, data: Any = None):
 
 ### 4. Fichier `schemas/__init__.py`
 
+#### Objectif : Point d'entrée unique pour tous les schémas
+
+#### Pourquoi nécessaire :
+
+- Import simplifié : from schemas import PassengerCreate, success_response
+- Cache la complexité interne du package schemas
+
 ```python
 from .response import StandardResponse, success_response, error_response
 from .passenger import PassengerCreate, PassengerUpdate, PassengerResponse
@@ -156,6 +188,15 @@ __all__ = [
 ```
 
 ### 5. Configuration base de données : `models/database.py`
+
+#### Objectif : Configuration centralisée de la base de données
+
+#### Pourquoi nécessaire :
+
+- Centralise la connexion PostgreSQL pour éviter la duplication
+- Fournit la factory `get_db()` pour l'injection de dépendances FastAPI
+- Définit la base SQLAlchemy pour tous les modèles
+- Permet de tester la connexion facilement
 
 ```python
 import os
@@ -192,6 +233,15 @@ def test_connection():
 
 ### 6. Modèle Passenger : `models/passenger.py`
 
+#### Objectif : Définir la structure de la table `passengers` en base
+
+#### Pourquoi nécessaire :
+
+- Sépare la définition du modèle de données de la logique métier
+- Utilise l'ORM SQLAlchemy pour mapper Python ↔ SQL
+- Centralise la structure de la table (un seul endroit à modifier)
+- Permet l'auto-génération des tables
+
 ```python
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from .database import Base
@@ -214,6 +264,14 @@ class Passenger(Base):
 
 ### 7. Fichier `models/__init__.py`
 
+#### Objectif : Exposer l'API publique du package `models`
+
+#### Pourquoi nécessaire :
+
+- Simplifie les imports : `from models import Passenger`
+- Cache les détails internes (seuls les éléments utiles sont exposés)
+- Facilite la refactorisation (on peut déplacer du code sans casser les imports)
+
 ```python
 from .database import get_db, engine, Base, test_connection
 from .passenger import Passenger
@@ -222,6 +280,15 @@ __all__ = ["get_db", "engine", "Base", "test_connection", "Passenger"]
 ```
 
 ### 8. Schémas Pydantic : `schemas/passenger.py`
+
+#### Objectif : Valider et sérialiser les données d'entrée/sortie
+
+#### Pourquoi nécessaire :
+
+- Validation automatique : Pydantic vérifie les types et contraintes
+- Documentation auto : FastAPI génère la doc depuis les schémas
+- Sécurité : Empêche l'injection de données malveillantes
+- Séparation : Les modèles API ≠ modèles base de données
 
 ```python
 from pydantic import BaseModel, Field
@@ -256,6 +323,22 @@ class PassengerResponse(PassengerBase):
 ```
 
 ### 9. Service métier : `services/passenger_service.py`
+
+#### Objectif : Centraliser TOUTE la logique métier des passagers
+
+#### Pourquoi nécessaire :
+
+- Séparation des responsabilités : API = HTTP, Service = logique métier
+- Réutilisabilité : Les méthodes peuvent être appelées depuis plusieurs endpoints
+- Testabilité : Plus facile de tester la logique isolément
+- Maintenance : Logique métier centralisée en un seul endroit
+
+#### Responsabilités :
+
+- Validation des règles métier
+- Orchestration des appels à la base
+- Calcul des statistiques
+- Formatage des réponses
 
 ```python
 from sqlalchemy.orm import Session
@@ -450,6 +533,13 @@ class PassengerService:
 
 ### 10. Fichier `services/__init__.py`
 
+#### Objectif : Point d'accès au service principal
+
+#### Pourquoi nécessaire :
+
+- Import direct : `from services import PassengerService`
+- Peut exposer plusieurs services si le projet grandit
+
 ```python
 from .passenger_service import PassengerService
 
@@ -457,6 +547,22 @@ __all__ = ["PassengerService"]
 ```
 
 ### 11. Routes API : `api/routes.py`
+
+#### Objectif : Définir les endpoints HTTP et gérer les requêtes/réponses
+
+#### Pourquoi nécessaire :
+
+- Séparation claire : Routes = HTTP uniquement, pas de logique métier
+- Gestion d'erreurs : Convertit les exceptions métier en codes HTTP
+- Validation HTTP : Paramètres de requête, headers, etc.
+- Documentation : FastAPI génère la doc depuis les routes
+
+#### Responsabilités :
+
+- Définir les URLs et méthodes HTTP
+- Validation des paramètres HTTP
+- Injection des dépendances (db, auth, etc.)
+- Conversion exceptions → codes HTTP
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
@@ -563,6 +669,13 @@ def delete_passenger(passenger_id: int, db: Session = Depends(get_db)):
 
 ### 12. Fichier `api/__init__.py`
 
+#### Objectif : Exposer le routeur principal
+
+#### Pourquoi nécessaire :
+
+- Import simple dans `main.py` : `from api import router`
+- Peut combiner plusieurs routeurs si nécessaire
+
 ```python
 from .routes import router
 
@@ -570,6 +683,15 @@ __all__ = ["router"]
 ```
 
 ### 13. Application principale : `main.py`
+
+#### Objectif : Point d'entrée de l'application, assemblage de tous les composants
+
+#### Pourquoi nécessaire :
+
+- Orchestration : Combine tous les modules ensemble
+- Configuration globale : CORS, middleware, titre de l'API
+- Séparation : Garde la logique dans les autres couches
+- Lisibilité : Vision claire de la structure de l'app
 
 ```python
 from fastapi import FastAPI
