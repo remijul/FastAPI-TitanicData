@@ -2,9 +2,18 @@
 # pip install -r requirements.txt
 # venv\Scripts\activate
 
+# Atelier 1
 requests
 fastapi
 uvicorn
+
+# Atelier 2
 sqlalchemy 
 psycopg2-binary
 python-dotenv
+
+# Atelier 4
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+pydantic[email]
